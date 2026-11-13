@@ -1,0 +1,25 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "system/queues.cpp"
+        "system/synchronization.cpp"
+        "system/trigger.cpp"
+        "services/binance_service.cpp"
+        "services/logger.cpp"
+        "tasks/task_consulta.cpp"
+        "tasks/task_gatilho.cpp"
+        "tasks/task_registro.cpp"
+    INCLUDE_DIRS "../include"
+    REQUIRES
+        esp_common
+        esp_event
+        esp_http_client
+        esp_netif
+        esp_timer
+        esp_wifi
+        freertos
+        json
+        log
+        mbedtls
+        nvs_flash
+)

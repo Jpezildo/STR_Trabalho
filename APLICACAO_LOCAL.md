@@ -1,19 +1,38 @@
-# Como aplicar esta proposta ao repositório existente
+# Configuração e validação local
 
-Esta pasta é uma proposta de reorganização para revisão local. Ela não altera o GitHub e não substitui automaticamente os arquivos do seu repositório.
+## Segredos locais
 
-1. Faça uma cópia local/backup do repositório atual.
-2. Compare os arquivos desta proposta com os arquivos existentes.
-3. Copie os novos diretórios e arquivos para a raiz local do projeto.
-4. Adicione `/include/secrets.h` ao `.gitignore` existente. Preserve as regras que já estão lá (`.pio` e configurações do VS Code).
-5. Crie `include/secrets.h` localmente a partir de `include/secrets.example.h` e preencha seus dados. Não compartilhe esse arquivo.
-6. Remova do `src/main.cpp` original a lógica que foi movida para os módulos novos; use a versão proposta como referência integral.
-7. Mantenha `src/tasks/task_registro.cpp` como o módulo que implementa T3; `src/logger.cpp` contém apenas a função que enfileira mensagens.
-8. Execute `pio run` no ambiente PlatformIO.
-9. Só depois de revisar a compilação e testar no ESP32, considere incorporar a reorganização ao seu fluxo normal de Git.
+1. Copie `include/secrets.example.h` para `include/secrets.h`.
+2. Preencha apenas credenciais locais de Wi-Fi se for testar consulta real à Testnet. O firmware não usa as chaves de ordem e não envia ordens.
+3. `include/secrets.h` está no `.gitignore`; confirme `git check-ignore include/secrets.h`.
+4. Nunca compartilhe esse arquivo. Rotacione credenciais que tenham sido publicadas anteriormente; apagar o arquivo atual não remove o histórico.
 
-## Arquivos que permanecem do projeto atual
+Sem `secrets.h` ou sem SSID/senha, o firmware entra em simulação e não tenta Wi-Fi nem envia ordens.
 
-- `platformio.ini`: mantenha a configuração existente; ela já define ESP32, Arduino e ArduinoJson.
-- `.gitignore`: mantenha as regras existentes e acrescente a regra para `include/secrets.h`.
-- `lib/` e `test/`: podem permanecer como estão. Os READMEs padrão do PlatformIO podem ser substituídos futuramente quando houver conteúdo real nesses diretórios.
+## Firmware ESP-IDF com PlatformIO
+
+O projeto usa `platformio.ini` (`framework = espidf`), `CMakeLists.txt` na raiz e `src/CMakeLists.txt` como componente. Instale PlatformIO e o toolchain ESP-IDF compatível antes de executar:
+
+```powershell
+pio run
+```
+
+Upload requer uma placa conectada e configuração local da porta:
+
+```powershell
+pio run --target upload
+pio device monitor
+```
+
+Não foi possível executar esses comandos no ambiente desta revisão porque `pio` e `idf.py` não estavam disponíveis no PATH.
+
+## Teste host da máquina de estados
+
+Com `g++` disponível, no PowerShell a partir da raiz:
+
+```powershell
+g++ -std=c++17 -Wall -Wextra -Werror -I include src\system\trigger.cpp test\native\test_trigger.cpp -o "$env:TEMP\str_trigger_test.exe"
+if ($LASTEXITCODE -eq 0) { & "$env:TEMP\str_trigger_test.exe" }
+```
+
+O binário de teste é criado em `%TEMP%`; esse teste não valida ESP-IDF, rede ou hardware.
