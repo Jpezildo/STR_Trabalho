@@ -9,3 +9,16 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+Os testes host estão em `native/` e não dependem de placa ESP32 ou ESP-IDF.
+
+No PowerShell, na raiz do projeto:
+
+```powershell
+g++ -std=c++17 -Wall -Wextra -Werror -I include src\system\trigger.cpp test\native\test_trigger.cpp -o "$env:TEMP\str_trigger_test.exe"
+if ($LASTEXITCODE -eq 0) { & "$env:TEMP\str_trigger_test.exe" }
+
+g++ -std=c++17 -Wall -Wextra -Werror test\native\load_experiment.cpp -o "$env:TEMP\str_load_experiment.exe"
+if ($LASTEXITCODE -eq 0) { & "$env:TEMP\str_load_experiment.exe" }
+```
+
+O primeiro programa verifica a máquina de estados. O segundo produz contadores de um modelo virtual de carga (não medições do ESP32). Casos de integração, placa e resultados devem ser registrados em `TEST_PLAN.md`.

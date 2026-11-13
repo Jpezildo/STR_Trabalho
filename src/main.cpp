@@ -1,154 +1,144 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-#include <time.h>
-#include "config.h" 
+#include <cstdlib>
+#include <cstring>
 
+#include "config.h"
+#include "esp_check.h"
+#include "esp_err.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_netif.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+#include "services/logger.h"
+#include "system/app_context.h"
+#include "system/queues.h"
+#include "system/synchronization.h"
+#include "tasks/task_consulta.h"
+#include "tasks/task_gatilho.h"
+#include "tasks/task_registro.h"
 
-QueueHandle_t Q_PRICE;
-QueueHandle_t Q_LOG;
-SemaphoreHandle_t M_NET;
-EventGroupHandle_t EG_SYS;
+namespace {
 
-#define WIFI_UP_BIT (1 << 0)
-#define TIME_OK_BIT (1 << 1)
+constexpr char kTag[] = "STR_APP";
+AppContext app_context;
+esp_event_handler_instance_t wifi_event_instance;
+esp_event_handler_instance_t ip_event_instance;
 
-struct LogMessage {
-    char texto[128];
-};
+void wifi_event_handler(void* argument, esp_event_base_t event_base,
+                        int32_t event_id, void*) {
+    auto* context = static_cast<AppContext*>(argument);
+    if (context == nullptr || event_base != WIFI_EVENT) {
+        return;
+    }
 
-void enviarLog(const char* formato, ...) {
-    LogMessage msg;
-    va_list args;
-    va_start(args, formato);
-    vsnprintf(msg.texto, sizeof(msg.texto), formato, args);
-    va_end(args);
- 
-    xQueueSend(Q_LOG, &msg, 0); 
-}
-
-
-void vTaskRegistro(void *pvParameters) {
-    LogMessage msg_recebida;
-    while(true) {
-        if (xQueueReceive(Q_LOG, &msg_recebida, portMAX_DELAY) == pdTRUE) {
-            Serial.println(msg_recebida.texto);
+    if (event_id == WIFI_EVENT_STA_START) {
+        const esp_err_t result = esp_wifi_connect();
+        if (result != ESP_OK) {
+            logger_log(context, "Falha ao iniciar conexao Wi-Fi: %s.",
+                       esp_err_to_name(result));
+        }
+    } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        synchronization_set_wifi(context, false);
+        const esp_err_t result = esp_wifi_connect();
+        if (result != ESP_OK) {
+            logger_log(context, "Falha ao solicitar reconexao Wi-Fi: %s.",
+                       esp_err_to_name(result));
         }
     }
 }
 
+void ip_event_handler(void* argument, esp_event_base_t event_base,
+                      int32_t event_id, void*) {
+    auto* context = static_cast<AppContext*>(argument);
+    if (context != nullptr && event_base == IP_EVENT &&
+        event_id == IP_EVENT_STA_GOT_IP) {
+        synchronization_set_wifi(context, true);
+        logger_log(context, "Wi-Fi conectado; consultas habilitadas.");
+    }
+}
 
-void vTaskGatilho(void *pvParameters) {
-    float preco_atual;
-    bool sistema_armado = true;
+esp_err_t start_wifi() {
+    ESP_RETURN_ON_ERROR(esp_netif_init(), kTag, "Falha ao inicializar netif");
+    ESP_RETURN_ON_ERROR(esp_event_loop_create_default(), kTag,
+                        "Falha ao criar event loop");
+    if (esp_netif_create_default_wifi_sta() == nullptr) {
+        return ESP_FAIL;
+    }
 
-    while(true) {
-        if (xQueueReceive(Q_PRICE, &preco_atual, portMAX_DELAY) == pdTRUE) {
-            if (sistema_armado && preco_atual > LIMIAR_GATILHO) {
-                unsigned long t0 = millis(); 
-                enviarLog("[T1-GATILHO] Limiar cruzado! Preço: %.2f. Iniciando envio...", preco_atual);
-                if (xSemaphoreTake(M_NET, pdMS_TO_TICKS(2000)) == pdTRUE) {
-                    HTTPClient http;
-                    http.begin(URL_ORDEM);
-                    http.addHeader("X-MBX-APIKEY", API_KEY);
-                    int httpResponseCode = http.POST("symbol=BTCUSDT&side=BUY&type=MARKET&quantity=0.01");
-                    
-                    unsigned long t1 = millis(); 
-                    
-                    if (httpResponseCode > 0) {
-                        enviarLog("[T1-GATILHO] Ordem ENVIADA! Tempo de Resposta (t1-t0): %lu ms", (t1 - t0));
-                    } else {
-                        enviarLog("[T1-ERRO] Falha no POST da ordem. Código: %d", httpResponseCode);
-                    }
-                    
-                    http.end();
-                    xSemaphoreGive(M_NET); 
-                    sistema_armado = false; 
-                    enviarLog("[T1-GATILHO] Sistema bloqueado/aguardando rearme.");
-                }
-            }
-            else if (!sistema_armado && preco_atual < (LIMIAR_GATILHO - 100)) {
-                sistema_armado = true;
-                enviarLog("[T1-GATILHO] Preço recuou. Gatilho REARMADO.");
-            }
+    wifi_init_config_t wifi_init_config = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_RETURN_ON_ERROR(esp_wifi_init(&wifi_init_config), kTag,
+                        "Falha ao inicializar Wi-Fi");
+    ESP_RETURN_ON_ERROR(
+        esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                            wifi_event_handler, &app_context,
+                                            &wifi_event_instance),
+        kTag, "Falha ao registrar eventos Wi-Fi");
+    ESP_RETURN_ON_ERROR(
+        esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                            ip_event_handler, &app_context,
+                                            &ip_event_instance),
+        kTag, "Falha ao registrar evento IP");
+
+    wifi_config_t wifi_config{};
+    const size_t ssid_length = std::strlen(STR_WIFI_SSID);
+    const size_t password_length = std::strlen(STR_WIFI_PASSWORD);
+    if (ssid_length > sizeof(wifi_config.sta.ssid) ||
+        password_length > sizeof(wifi_config.sta.password)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    std::memcpy(wifi_config.sta.ssid, STR_WIFI_SSID, ssid_length);
+    std::memcpy(wifi_config.sta.password, STR_WIFI_PASSWORD,
+                password_length);
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+
+    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), kTag,
+                        "Falha ao configurar modo Wi-Fi");
+    ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), kTag,
+                        "Falha ao configurar rede Wi-Fi");
+    return esp_wifi_start();
+}
+
+void start_task(const char* name, TaskFunction_t function,
+                uint32_t stack_size, UBaseType_t priority) {
+    if (xTaskCreate(function, name, stack_size, &app_context, priority, nullptr) !=
+        pdPASS) {
+        ESP_LOGE(kTag, "Falha ao criar tarefa %s", name);
+        abort();
+    }
+}
+
+}  // namespace
+
+extern "C" void app_main() {
+    esp_err_t nvs_result = nvs_flash_init();
+    if (nvs_result == ESP_ERR_NVS_NO_FREE_PAGES ||
+        nvs_result == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nvs_result = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(nvs_result);
+
+    if (!queues_init(&app_context) ||
+        !synchronization_init(&app_context)) {
+        ESP_LOGE(kTag, "Falha ao criar recursos FreeRTOS");
+        abort();
+    }
+    start_task("T3_Registro", task_registro, 3072, 1);
+
+    app_context.simulation_mode =
+        STR_WIFI_SSID[0] == '\0' || STR_WIFI_PASSWORD[0] == '\0';
+    if (app_context.simulation_mode) {
+        logger_log(&app_context,
+                   "Sem credenciais locais: modo de simulacao ativado; nenhuma ordem sera enviada.");
+    } else {
+        const esp_err_t wifi_result = start_wifi();
+        if (wifi_result != ESP_OK) {
+            ESP_LOGE(kTag, "Falha ao iniciar Wi-Fi: %s",
+                     esp_err_to_name(wifi_result));
+            abort();
         }
     }
-}
-void vTaskConsulta(void *pvParameters) {
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = pdMS_TO_TICKS(20); 
 
-    while(true) {
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-
-        EventBits_t status = xEventGroupGetBits(EG_SYS);
-        if ((status & (WIFI_UP_BIT | TIME_OK_BIT)) == (WIFI_UP_BIT | TIME_OK_BIT)) {
-            
-            if (xSemaphoreTake(M_NET, pdMS_TO_TICKS(1000)) == pdTRUE) {
-                
-                HTTPClient http;
-                http.begin(URL_COTACAO);
-                int httpCode = http.GET();
-                
-                if (httpCode == HTTP_CODE_OK) {
-                    String payload = http.getString();
-   
-                    JsonDocument doc;
-                    DeserializationError error = deserializeJson(doc, payload);
-                    
-                    if (!error) {
-                        float preco = doc["price"].as<float>();
-                        enviarLog("[T2-CONSULTA] Preço atualizado: %.2f", preco);
-                        
-                        xQueueOverwrite(Q_PRICE, &preco);
-                    }
-                } else {
-                    enviarLog("[T2-ERRO] Erro na consulta HTTP: %d", httpCode);
-                }
-                
-                http.end();
-                xSemaphoreGive(M_NET);
-            }
-        } else {
-             enviarLog("[T2-CONSULTA] Aguardando Wi-Fi e NTP...");
-        }
-    }
-}
-
-void setup() {
-    Serial.begin(115200);
-    delay(1000);
-    Serial.println("\n--- INICIANDO SISTEMA DE TEMPO REAL (ESP32) ---");
-
-    Q_PRICE = xQueueCreate(1, sizeof(float)); 
-    Q_LOG = xQueueCreate(16, sizeof(LogMessage));
-    M_NET = xSemaphoreCreateMutex();
-    EG_SYS = xEventGroupCreate();
-
-    xTaskCreatePinnedToCore(vTaskRegistro, "T3_Log", 2048, NULL, 1, NULL, 1);
-
-    enviarLog("[SISTEMA] Conectando ao Wi-Fi %s...", WIFI_SSID);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-    }
-    xEventGroupSetBits(EG_SYS, WIFI_UP_BIT);
-    enviarLog("[SISTEMA] Wi-Fi Conectado!");
-
-    enviarLog("[SISTEMA] Sincronizando hora NTP...");
-    configTime(0, 0, "pool.ntp.org");
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-        xEventGroupSetBits(EG_SYS, TIME_OK_BIT);
-        enviarLog("[SISTEMA] Hora NTP Sincronizada!");
-    }
-
-    xTaskCreatePinnedToCore(vTaskConsulta, "T2_Consulta", 8192, NULL, 2, NULL, 1);
-    xTaskCreatePinnedToCore(vTaskGatilho,  "T1_Gatilho",  8192, NULL, 3, NULL, 1);
-}
-
-void loop() {
-
-    vTaskDelete(NULL);
+    start_task("T2_Consulta", task_consulta, 6144, 2);
+    start_task("T1_Gatilho", task_gatilho, 4096, 3);
 }
