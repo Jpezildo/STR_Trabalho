@@ -2,6 +2,8 @@
 
 Este documento apresenta dois retratos distintos: a implementação encontrada no repositório consultado e a arquitetura funcional descrita na proposta do grupo. A arquitetura-alvo deverá ser consolidada após a resolução das pendências em [`docs/DECISIONS_PENDING.md`](docs/DECISIONS_PENDING.md).
 
+Para orientar a execução prática, o plano operacional do projeto foi registrado em [`PLANO_ACAO.md`](PLANO_ACAO.md). Ele define a sequência de decisões e implementações prioritárias antes da alteração do firmware.
+
 ## 1. Objetivo e limites do sistema
 
 O sistema embarcado utiliza um ESP32 conectado à internet por Wi-Fi. Ele consulta a cotação de um ativo na API de uma corretora, avalia um limiar configurado e, quando a condição de negociação é satisfeita, envia uma requisição para criação de uma ordem. A interface serial fornece registros locais do funcionamento.

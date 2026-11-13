@@ -6,6 +6,8 @@
 
 Este diagnóstico descreve somente os arquivos efetivamente consultados nesta revisão. Ele não substitui a compilação local nem uma inspeção completa de todos os arquivos do repositório.
 
+O plano de ação para tratar os pontos levantados está em [`PLANO_ACAO.md`](PLANO_ACAO.md). Use-o como referência para a sequência de trabalho; as pendências técnicas abaixo continuam sem resolução até que sejam decididas e validadas.
+
 ## 1. Arquivos consultados
 
 | Caminho | Observação |

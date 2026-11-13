@@ -2,6 +2,8 @@
 
 Use este arquivo como pauta de alinhamento do grupo e, quando necessário, de consulta ao professor. Os itens abaixo não devem ser resolvidos silenciosamente por uma IA.
 
+O plano de ação em [`PLANO_ACAO.md`](PLANO_ACAO.md) organiza as decisões e ações necessárias para consolidar o projeto. Consulte-o para a sequência recomendada de trabalho; este arquivo continua sendo o registro das decisões técnicas pendentes e adotadas.
+
 ## D01 — Framework exigido no PC3
 
 **Situação:** `platformio.ini` da branch `Develop` usa `framework = arduino`; o roteiro do PC3 pede ESP-IDF e FreeRTOS.

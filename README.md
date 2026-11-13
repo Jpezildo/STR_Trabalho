@@ -26,6 +26,7 @@ A documentação distingue explicitamente:
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Arquitetura atual observada e arquitetura conceitual pretendida. |
 | [`AGENTS.md`](AGENTS.md) | Regras para uso de Gemini, Codex e outras IAs no projeto. |
 | [`APLICACAO_LOCAL.md`](APLICACAO_LOCAL.md) | Como revisar e aplicar a documentação localmente, sem alterar o GitHub. |
+| [`PLANO_ACAO.md`](PLANO_ACAO.md) | Plano de ação para consolidação do projeto, com decisões, prioridades e critérios de conclusão. |
 | [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md) | Síntese fiel da proposta apresentada pelo grupo. |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Requisitos funcionais e temporais organizados para PC2/PC3. |
 | [`docs/TASKS.md`](docs/TASKS.md) | Responsabilidades, ativação, prioridades e comunicação das tarefas. |
@@ -50,6 +51,7 @@ O `platformio.ini` atualmente consultado declara `framework = arduino`. O roteir
 
 ## Como começar
 
+0. Leia [`PLANO_ACAO.md`](PLANO_ACAO.md) para seguir a sequência de decisões e ações prioritárias do projeto.
 1. Leia [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) para entender o estado observado do código.
 2. Leia [`docs/DECISIONS_PENDING.md`](docs/DECISIONS_PENDING.md) e resolva as divergências com o grupo/professor.
 3. Leia [`ARCHITECTURE.md`](ARCHITECTURE.md) e [`docs/TASKS.md`](docs/TASKS.md) para consolidar a arquitetura.
