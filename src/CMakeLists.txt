@@ -10,6 +10,7 @@ idf_component_register(
         "tasks/task_gatilho.cpp"
         "tasks/task_registro.cpp"
     INCLUDE_DIRS "../include"
+    WHOLE_ARCHIVE
     REQUIRES
         esp_common
         esp_event
@@ -18,7 +19,6 @@ idf_component_register(
         esp_timer
         esp_wifi
         freertos
-        json
         log
         mbedtls
         nvs_flash
