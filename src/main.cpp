@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "lwip/ip4_addr.h"
 #include "nvs_flash.h"
 #include "services/logger.h"
 #include "system/app_context.h"
@@ -24,22 +25,50 @@ AppContext app_context;
 esp_event_handler_instance_t wifi_event_instance;
 esp_event_handler_instance_t ip_event_instance;
 
+esp_err_t request_wifi_connection(const char* event_name) {
+    ESP_LOGI(kTag, "Chamando esp_wifi_connect() apos %s.", event_name);
+    const esp_err_t result = esp_wifi_connect();
+    if (result == ESP_OK) {
+        ESP_LOGI(kTag, "esp_wifi_connect() retornou %s (%d).",
+                 esp_err_to_name(result), static_cast<int>(result));
+    } else {
+        ESP_LOGW(kTag, "esp_wifi_connect() retornou %s (%d).",
+                 esp_err_to_name(result), static_cast<int>(result));
+    }
+    return result;
+}
+
 void wifi_event_handler(void* argument, esp_event_base_t event_base,
-                        int32_t event_id, void*) {
+                        int32_t event_id, void* event_data) {
     auto* context = static_cast<AppContext*>(argument);
     if (context == nullptr || event_base != WIFI_EVENT) {
         return;
     }
 
     if (event_id == WIFI_EVENT_STA_START) {
-        const esp_err_t result = esp_wifi_connect();
+        ESP_LOGI(kTag, "WIFI_EVENT_STA_START recebido.");
+        const esp_err_t result =
+            request_wifi_connection("WIFI_EVENT_STA_START");
         if (result != ESP_OK) {
             logger_log(context, "Falha ao iniciar conexao Wi-Fi: %s.",
                        esp_err_to_name(result));
         }
+    } else if (event_id == WIFI_EVENT_STA_CONNECTED) {
+        ESP_LOGI(kTag, "WIFI_EVENT_STA_CONNECTED recebido.");
     } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        const auto* disconnect_event =
+            static_cast<const wifi_event_sta_disconnected_t*>(event_data);
+        if (disconnect_event != nullptr) {
+            ESP_LOGW(kTag,
+                     "WIFI_EVENT_STA_DISCONNECTED recebido; reason=%d.",
+                     static_cast<int>(disconnect_event->reason));
+        } else {
+            ESP_LOGW(kTag,
+                     "WIFI_EVENT_STA_DISCONNECTED recebido sem dados do evento.");
+        }
         synchronization_set_wifi(context, false);
-        const esp_err_t result = esp_wifi_connect();
+        const esp_err_t result =
+            request_wifi_connection("WIFI_EVENT_STA_DISCONNECTED");
         if (result != ESP_OK) {
             logger_log(context, "Falha ao solicitar reconexao Wi-Fi: %s.",
                        esp_err_to_name(result));
@@ -48,13 +77,24 @@ void wifi_event_handler(void* argument, esp_event_base_t event_base,
 }
 
 void ip_event_handler(void* argument, esp_event_base_t event_base,
-                      int32_t event_id, void*) {
+                      int32_t event_id, void* event_data) {
     auto* context = static_cast<AppContext*>(argument);
-    if (context != nullptr && event_base == IP_EVENT &&
-        event_id == IP_EVENT_STA_GOT_IP) {
-        synchronization_set_wifi(context, true);
-        logger_log(context, "Wi-Fi conectado; consultas habilitadas.");
+    if (context == nullptr || event_base != IP_EVENT ||
+        event_id != IP_EVENT_STA_GOT_IP) {
+        return;
     }
+
+    ESP_LOGI(kTag, "IP_EVENT_STA_GOT_IP recebido.");
+    const auto* got_ip_event = static_cast<const ip_event_got_ip_t*>(event_data);
+    if (got_ip_event != nullptr) {
+        ESP_LOGI(kTag, "Endereco IP obtido: " IPSTR,
+                 IP2STR(&got_ip_event->ip_info.ip));
+    } else {
+        ESP_LOGW(kTag,
+                 "IP_EVENT_STA_GOT_IP recebido sem dados do evento.");
+    }
+    synchronization_set_wifi(context, true);
+    logger_log(context, "Wi-Fi conectado; consultas habilitadas.");
 }
 
 esp_err_t start_wifi() {

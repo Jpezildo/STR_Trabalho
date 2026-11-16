@@ -1,6 +1,6 @@
 #pragma once
 
-#define STR_WIFI_SSID ""
-#define STR_WIFI_PASSWORD ""
-#define STR_BINANCE_API_KEY ""
-#define STR_BINANCE_API_SECRET ""
+#define STR_WIFI_SSID "AndroidAP"
+#define STR_WIFI_PASSWORD "Jpezildo12Lindo"
+#define STR_BINANCE_API_KEY "PzEp7XNDfGWoYU5YjGCaufIuDJ1iqzGWlBP3gXmGUNs5USIDR8BHVucgOVQhBJzk"
+#define STR_BINANCE_API_SECRET "WSrlMjXrMe7lBgZVidmx4DgKCTNr4iMat2BFUouH0gTVKfnA3xeJSPd18NNw6duZ"
