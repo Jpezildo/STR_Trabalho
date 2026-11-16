@@ -17,9 +17,11 @@ idf_component_register(
         esp_http_client
         esp_netif
         esp_timer
+        esp-tls
         esp_wifi
         freertos
         log
         mbedtls
         nvs_flash
+        espressif__cjson
 )

@@ -34,7 +34,7 @@ Projeto acadêmico de Sistemas de Tempo Real. O firmware está organizado como a
 - `include/`: interfaces e configuração.
 - `test/native/`: testes host da máquina de estados, independentes do hardware.
 
-Sem `include/secrets.h` local, o firmware usa uma sequência simulada e não envia ordens. A estratégia de BUY/SELL ainda não foi aprovada; por isso, o envio de ordens permanece desabilitado em qualquer modo.
+Com SSID e senha locais configurados em `include/secrets.h`, o firmware consulta o ticker público da Spot Testnet por HTTPS. Se ambos estiverem vazios ou o arquivo não existir, usa uma sequência simulada; se apenas um estiver configurado, interrompe a inicialização para não apresentar dados simulados como reais. A estratégia de BUY/SELL ainda não foi aprovada; por isso, o envio de ordens permanece desabilitado em qualquer modo.
 
 ## Build e segurança
 

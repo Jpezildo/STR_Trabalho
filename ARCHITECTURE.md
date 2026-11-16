@@ -41,7 +41,7 @@ flowchart LR
 
 ### Inicialização e conectividade
 
-`app_main()` inicializa NVS, filas, Event Group e T3. Sem credenciais Wi-Fi locais, ativa modo de cotação simulada. Com credenciais locais, configura ESP-IDF Wi-Fi STA, marca o bit de conexão após receber IP e tenta reconectar após desconexão. Credenciais não são impressas. Não há sincronização SNTP ativa porque a integração de ordens assinadas está bloqueada por decisão de estratégia.
+`app_main()` inicializa NVS, filas, Event Group e T3. Com SSID e senha locais, configura ESP-IDF Wi-Fi STA, marca o bit de conexão após receber IP e tenta reconectar após desconexão. Se ambos estiverem vazios, ativa o modo de cotação simulada; se somente um estiver preenchido, interrompe a inicialização em vez de mascarar uma configuração incompleta com dados fictícios. Credenciais não são impressas. Não há sincronização SNTP ativa porque a integração de ordens assinadas está bloqueada por decisão de estratégia.
 
 ### T1 — gatilho
 

@@ -16,6 +16,7 @@ Este documento mistura casos planejados e um teste host implementado. Não é re
 | TC01 | T2 publica preço e T1 consome. | Sequência e valor coerentes; lacunas observáveis. | Pendente em ESP-IDF/placa. |
 | TC02 | Fila de logs cheia. | Produtor não bloqueia; descarte contado e reportado por T3. | Implementado em código; teste pendente. |
 | TC03 | Wi-Fi desconecta e reconecta. | Bit de conectividade atualizado e reconexão solicitada. | Implementado em código; placa pendente. |
+| TC04 | Configurar somente SSID ou somente senha. | Inicialização falha explicitamente; T2 não publica preços simulados. | Implementado em código; build/placa pendentes. |
 | TLS01 | Certificado inválido/CA não confiável. | HTTPS falha; validação TLS não é desativada. | Pendente em ambiente ESP-IDF. |
 | INT01 | Preço simulado → Q_PRICE → T1 → Q_LOG → T3. | Cruzamento detectado e log assíncrono; sem ordem real. | Pendente em placa; não há saída presumida. |
 

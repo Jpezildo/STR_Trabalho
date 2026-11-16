@@ -7,7 +7,7 @@
 3. `include/secrets.h` está no `.gitignore`; confirme `git check-ignore include/secrets.h`.
 4. Nunca compartilhe esse arquivo. Rotacione credenciais que tenham sido publicadas anteriormente; apagar o arquivo atual não remove o histórico.
 
-Sem `secrets.h` ou sem SSID/senha, o firmware entra em simulação e não tenta Wi-Fi nem envia ordens.
+Com SSID e senha preenchidos, o firmware conecta ao Wi-Fi e consulta o ticker público da Spot Testnet por HTTPS. Se ambos estiverem vazios ou `secrets.h` não existir, o firmware entra em simulação. Se apenas um deles estiver preenchido, a inicialização falha explicitamente em vez de usar dados simulados. Nenhuma ordem é enviada.
 
 ## Firmware ESP-IDF com PlatformIO
 

@@ -5,7 +5,7 @@
 - A configuração foi alterada para ESP-IDF/FreeRTOS, com PlatformIO e arquivos CMake de projeto/componente.
 - A lógica concentrada em `src/main.cpp` foi dividida em T1, T2, T3, serviços, filas, sincronização e máquina de estados.
 - T2 usa período inicial de 5000 ms, fila de preço de tamanho 1 e serviço de ticker HTTPS com bundle TLS.
-- Sem credenciais locais, T2 gera preços simulados. A configuração rastreada foi substituída por valores vazios; `include/secrets.h` está excluído pelo Git.
+- Com SSID e senha locais, T2 consulta o ticker público da Spot Testnet por HTTPS. Se ambos estiverem vazios, T2 gera preços simulados; uma configuração parcial falha explicitamente. `include/secrets.h` está excluído pelo Git.
 - T1 detecta cruzamentos a partir de preços válidos anteriores/atuais. Não há estratégia aprovada para mapear cruzamentos para ordens; nenhuma ordem é enviada.
 - Há teste host para a máquina de estados em `test/native/test_trigger.cpp`.
 - Documentação reorganizada em arquivos Markdown na raiz: [PROJECT_SPEC.md](PROJECT_SPEC.md), [REQUIREMENTS.md](REQUIREMENTS.md), [TASKS.md](TASKS.md) e demais guias.

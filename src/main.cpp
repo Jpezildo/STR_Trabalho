@@ -125,8 +125,15 @@ extern "C" void app_main() {
     }
     start_task("T3_Registro", task_registro, 3072, 1);
 
-    app_context.simulation_mode =
-        STR_WIFI_SSID[0] == '\0' || STR_WIFI_PASSWORD[0] == '\0';
+    const bool wifi_ssid_configured = STR_WIFI_SSID[0] != '\0';
+    const bool wifi_password_configured = STR_WIFI_PASSWORD[0] != '\0';
+    if (wifi_ssid_configured != wifi_password_configured) {
+        ESP_LOGE(kTag,
+                 "Configuracao Wi-Fi incompleta; informe SSID e senha ou deixe ambos vazios.");
+        abort();
+    }
+
+    app_context.simulation_mode = !wifi_ssid_configured;
     if (app_context.simulation_mode) {
         logger_log(&app_context,
                    "Sem credenciais locais: modo de simulacao ativado; nenhuma ordem sera enviada.");
