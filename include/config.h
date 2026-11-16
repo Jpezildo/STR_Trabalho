@@ -1,16 +1,17 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
-const char* WIFI_SSID = "Reis";
-const char* WIFI_PASS = "Reis#1975@";
-
-const float LIMIAR_GATILHO = 61000.00; 
-
-
-const char* API_KEY = "PzEp7XNDfGWoYU5YjGCaufIuDJ1iqzGWlBP3gXmGUNs5USIDR8BHVucgOVQhBJzk";
-const char* SECRET_KEY = "WSrlMjXrMe7lBgZVidmx4DgKCTNr4iMat2BFUouH0gTVKfnA3xeJSPd18NNw6duZ";
-
-const char* URL_COTACAO = "https://testnet.binance.vision/api/v3/ticker/price?symbol=BTCUSDT";
-const char* URL_ORDEM = "https://testnet.binance.vision/api/v3/order";
-
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#define STR_WIFI_SSID ""
+#define STR_WIFI_PASSWORD ""
+#define STR_BINANCE_API_KEY ""
+#define STR_BINANCE_API_SECRET ""
 #endif
+
+inline constexpr char kQuoteUrl[] =
+    "https://testnet.binance.vision/api/v3/ticker/price?symbol=BTCUSDT";
+inline constexpr float kTriggerThreshold = 61000.0F;
+inline constexpr float kRearmHysteresis = 100.0F;
+inline constexpr unsigned kQuotePeriodMs = 5000;
+inline constexpr unsigned kHttpTimeoutMs = 5000;

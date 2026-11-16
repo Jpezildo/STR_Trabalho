@@ -1,122 +1,58 @@
-# Decisões pendentes do projeto
+# Decisões pendentes
 
-Use este arquivo como pauta de alinhamento do grupo e, quando necessário, de consulta ao professor. Os itens abaixo não devem ser resolvidos silenciosamente por uma IA.
+Este arquivo separa decisões acadêmicas ainda necessárias dos comportamentos técnicos que já foram implementados. As escolhas abaixo não devem ser feitas silenciosamente por uma IA.
 
-O plano de ação em [`PLANO_ACAO.md`](PLANO_ACAO.md) organiza as decisões e ações necessárias para consolidar o projeto. Consulte-o para a sequência recomendada de trabalho; este arquivo continua sendo o registro das decisões técnicas pendentes e adotadas.
+## D01 — Ação associada a cada cruzamento
 
-## D01 — Framework exigido no PC3
+- **Pergunta:** cruzamento ascendente e descendente geram BUY, SELL ou apenas sinalização?
+- **Importância:** não existe implementação correta de ordens sem a regra aprovada.
+- **Bloqueio:** nenhuma ordem, nem mesmo uma requisição de teste que exija lado/quantidade, é enviada.
+- **Decisão:** equipe/professor devem fornecer a tabela de decisão e confirmar parâmetros.
 
-**Situação:** `platformio.ini` da branch `Develop` usa `framework = arduino`; o roteiro do PC3 pede ESP-IDF e FreeRTOS.
+## D02 — Limiar, ativo e quantidade
 
-**Decisão necessária:** confirmar com o professor se o PC3 exige ESP-IDF nativo ou se a camada Arduino é aceita para a atividade. Se ESP-IDF for obrigatório, definir migração e estratégia de build. PlatformIO pode ser mantido como ferramenta se configurado para o framework correto.
+- **Pergunta:** manter valores atuais ou escolher valores de demonstração?
+- **Importância:** afeta a estratégia e a validade acadêmica.
+- **Bloqueio:** ativo, limiar atual de 61000 e parâmetros de operação permanecem sem nova aprovação.
+- **Observação:** o valor de histerese 100 é herdado do código anterior e configurável no firmware; não é requisito aprovado.
 
-**Prioridade:** crítica.
+## D03 — Definição e evidência de RT01
 
-## D02 — Significado mensurável do deadline de 500 ms
+- **Pergunta:** que evento observável representa exatamente o início da transmissão?
+- **Importância:** o PC1 define menos de 500 ms entre detecção e início do envio, não até resposta/execução remota.
+- **Bloqueio:** sem ordem habilitada, não há `t_send_begin`; o requisito não pode ser declarado atendido.
+- **Decisão:** validar a métrica com professor e instrumentar evento disponível na versão ESP-IDF adotada; rotular aproximação quando não for medição do primeiro byte na rede.
 
-**Situação:** o PC1 define menos de 500 ms entre detecção do gatilho e geração/início do envio via Wi-Fi. A implementação atual mede até o retorno da chamada POST.
+## D04 — Teste da integração privada
 
-**Decisão necessária:** fixar o ponto exato de início e fim da métrica principal. Recomendação de interpretação alinhada ao PC1: `t_send_begin - t_detect`. Medir o tempo da resposta HTTP e a confirmação remota separadamente.
+- **Pergunta:** usar mock local ou endpoint `/api/v3/order/test` da Binance Spot Testnet depois de aprovada a estratégia?
+- **Importância:** ordem privada precisa timestamp, assinatura HMAC e credenciais.
+- **Bloqueio:** somente consulta pública do ticker está implementada; autenticação de ordem e SNTP seguem desabilitados.
 
-**Prioridade:** crítica.
+## D05 — Ambiente e versão ESP-IDF
 
-## D03 — Polling de 5 s versus 20 ms
+- **Situação:** `platformio.ini` seleciona framework `espidf`, mas o ambiente analisado não tem `pio` nem `idf.py` disponíveis no PATH.
+- **Ação necessária:** instalar/configurar toolchain e registrar versões usadas; executar build e resolver incompatibilidades.
 
-**Situação:** PC1 registra 5 s; código atual usa 20 ms.
+## D06 — Experimento PC3
 
-**Decisão necessária:** definir o período de projeto a ser levado ao PC2. Justificar tecnicamente a escolha considerando atualidade da cotação, taxa de requisições, latência e experimento de carga. Não assumir que 20 ms é uma necessidade do sistema.
+- **Pergunta:** duração e condições de carga a executar em placa, sem sobrecarregar API externa?
+- **Proposta:** usar eventos simulados de frequência baixa e alta, mantendo firmware, duração, tarefas e filas comparáveis.
+- **Bloqueio:** números e evidências físicos ainda não existem.
 
-**Prioridade:** alta.
+## D07 — Credenciais anteriormente expostas
 
-## D04 — Regra de compra e venda
+- **Ação:** proprietário deve rotacionar senha Wi-Fi e chaves API que tenham sido publicadas e verificar o histórico remoto.
+- **Limite:** não foram copiadas credenciais e não foi reescrito histórico. Remover do arquivo atual não invalida valores já expostos.
 
-**Situação:** proposta menciona cruzamentos para cima/baixo e compra/venda. Código atual tenta apenas BUY quando preço > limiar.
+## Registro
 
-**Decisão necessária:** estabelecer tabela de decisão, por exemplo qual cruzamento gera BUY, qual gera SELL, que ativo e parâmetros entram na ordem e se haverá uma ou mais estratégias.
-
-**Prioridade:** alta.
-
-## D05 — Definição formal de “cruzamento”
-
-**Situação:** o código verifica se o preço está acima do limiar, o que não prova por si só que houve cruzamento naquele instante.
-
-**Decisão necessária:** definir se o gatilho compara o preço anterior e o atual (transição entre lados do limiar), usa uma condição por faixa ou outra regra. Definir tratamento para primeira cotação após inicialização.
-
-**Prioridade:** alta.
-
-## D06 — Rearme, histerese e duplicidade
-
-**Situação:** código atual desarma depois da tentativa e rearma quando o preço fica abaixo do limiar menos 100. A regra não está claramente especificada no PC1.
-
-**Decisão necessária:** aprovar uma política explícita: condição de desarme, condição de rearme, comportamento em erro HTTP, timeout ou falha de autenticação, e prevenção contra ordem duplicada.
-
-**Prioridade:** alta.
-
-## D07 — Recurso de rede compartilhado
-
-**Situação:** T1 e T2 usam `M_NET`; T1 pode aguardar o mutex por até 2 s, enquanto RT01 é menor que 500 ms.
-
-**Decisão necessária:** escolher estratégia para coordenar o uso HTTP sem permitir que T1 espere mais que o deadline. Avaliar duração máxima de operações, timeout, client independente, fila de solicitações de ordem ou outra estratégia compatível com a plataforma. Testar a decisão.
-
-**Prioridade:** crítica.
-
-## D08 — NTP e dependência de horário
-
-**Situação:** T2 só consulta quando Wi-Fi e NTP estão prontos. Consulta pública do ticker e envio de ordem assinada têm necessidades diferentes; o endpoint privado exige timestamp.
-
-**Decisão necessária:** decidir se T2 pode consultar após Wi-Fi, deixando NTP como pré-condição apenas para requisições assinadas, ou se há outro motivo para bloquear a consulta.
-
-**Prioridade:** média.
-
-## D09 — Estratégia de teste de ordem
-
-**Situação:** a integração privada do código atual não inclui assinatura. O PC1 admite API com envio de ordens ou simulação/mock.
-
-**Decisão necessária:** escolher entre mock local, endpoint de teste de criação de ordem da Binance Testnet (`POST /api/v3/order/test`) ou uma integração autenticada com a Testnet. O endpoint de teste valida a ordem sem enviá-la ao mecanismo de matching, mas exige a assinatura correspondente.
-
-**Prioridade:** alta.
-
-## D10 — Configuração de limiar, ativo e parâmetros da ordem
-
-**Situação:** o código consultado define ativo/endpoint, limiar e dados da operação no código.
-
-**Decisão necessária:** decidir quais parâmetros serão configuráveis, quais serão constantes de compilação e como serão validados. Não alterar quantidade, ativo ou estratégia sem autorização do grupo.
-
-**Prioridade:** média.
-
-## D11 — Semântica das prioridades
-
-**Situação:** PC1 usa rótulos “Prioridade 1/2/3” para alta/média/baixa; código usa valores numéricos 3/2/1.
-
-**Decisão necessária:** documentar as prioridades como alta/média/baixa e registrar os valores reais adotados na implementação. No FreeRTOS, número maior representa prioridade maior.
-
-**Prioridade:** média.
-
-## D12 — Política de perda de mensagens
-
-**Situação:** fila de preço tem tamanho 1 e sobrescreve valores; fila de logs pode descartar mensagens se estiver cheia.
-
-**Decisão necessária:** decidir se é aceitável descartar cotações intermediárias e logs, e quais contadores/indicadores serão medidos no experimento de carga do PC3.
-
-**Prioridade:** média.
-
-## D13 — Credenciais publicadas
-
-**Situação:** o `include/config.h` consultado contém credenciais em texto.
-
-**Decisão necessária:** rotacionar/revogar credenciais expostas, revisar histórico Git e estabelecer padrão local de segredos ignorados pelo controle de versão.
-
-**Prioridade:** crítica e imediata.
-
-## Registro de decisões
-
-Quando uma decisão for tomada, registrar aqui:
-
-| ID | Decisão adotada | Responsável/validação | Data | Arquivos afetados |
-|---|---|---|---|---|
-| D01 | Pendente | — | — | `platformio.ini`, `README.md`, arquitetura |
-| D02 | Pendente | — | — | `REQUIREMENTS.md`, instrumentação, testes |
-| D03 | Pendente | — | — | `config`, T2, `REQUIREMENTS.md` |
-| D04–D06 | Pendente | — | — | T1, requisitos, testes |
-| D07–D12 | Pendente | — | — | arquitetura, tarefas, testes |
-| D13 | Pendente | — | — | configuração local, histórico Git |
+| ID | Estado | Evidência/decisão |
+|---|---|---|
+| D01 | Pendente | Mapeamento de cruzamentos ainda não aprovado. |
+| D02 | Pendente | 61000 e histerese 100 foram mantidos como valores herdados. |
+| D03 | Pendente | Não existe envio para medir. |
+| D04 | Pendente | Serviço de ordem não implementado. |
+| D05 | Bloqueado | Toolchain ausente no PATH na inspeção local. |
+| D06 | Pendente | Testes no hardware ainda não executados. |
+| D07 | Ação manual necessária | Rotação e revisão de histórico cabem ao proprietário. |

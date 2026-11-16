@@ -1,193 +1,32 @@
-﻿# Plano de ação do projeto STR_Trabalho
+# Plano de ação do projeto STR_Trabalho
 
-## Objetivo
+Este documento organiza a consolidação do firmware, sem cronograma. A implementação atual evita decisões de estratégia financeira que não foram aprovadas.
 
-Consolidar o projeto para atender ao escopo acadêmico do PC3, com arquitetura coerente, regra de negócio definida, integração de rede segura e evidências de validação. O objetivo principal é garantir que o sistema funcione de forma previsível em tempo real, com separação clara entre tarefas, controle de concorrência e medição de desempenho.
+## Concluído localmente (ainda sem validação de build)
 
-## Contexto
+- Alterar framework para ESP-IDF/FreeRTOS e criar arquivos CMake de projeto/componente.
+- Separar inicialização, T1, T2, T3, serviços, filas, sincronização e máquina de estados.
+- Configurar consulta periódica para 5 s e fallback determinístico simulado quando não houver credenciais Wi-Fi locais.
+- Implementar máquina de estados que identifica cruzamentos e rearmamento herdado, sem escolher BUY/SELL.
+- Substituir credenciais no arquivo rastreado por configuração local opcional e ignorar `include/secrets.h`.
+- Corrigir documentação para refletir arquivos e módulos existentes; adicionar especificação, requisitos e descrição de tarefas.
+- Compilar e executar o teste host da máquina de estados e o modelo virtual de carga; os resultados não substituem medições em ESP32.
 
-A pasta contém documentação de revisão e análise do projeto, e o código atual observado em `src/main.cpp` apresenta uma implementação preliminar, mas com divergências importantes em relação à proposta acadêmica e ao requisito do PC3.
+## Ações em aberto
 
-Os principais pontos observados são:
-
-- uso de `framework = arduino` em `platformio.ini`;
-- uso de FreeRTOS em tarefas concorrentes;
-- regra de gatilho simplificada e incompleta;
-- compartilhamento do mutex de rede entre tarefas críticas;
-- falta de definição formal do deadline de 500 ms;
-- ausência de autenticação completa da ordem privada da Binance;
-- segredos expostos em `include/config.h`.
-
-## Diretriz de trabalho
-
-Antes de alterar qualquer código, a equipe deve resolver as pendências críticas de arquitetura e regra de negócio, documentar as decisões e só então implementar as mudanças de forma incremental.
-
-## Plano de ação
-
-### 1. Resolver a decisão crítica de plataforma
-
-Definir se o projeto será implementado com ESP-IDF nativo ou se o uso de Arduino será aceito pelo professor e pelo roteiro do PC3.
-
-Ações:
-- confirmar com o professor/grupo a exigência do PC3;
-- decidir se será mantido PlatformIO como ferramenta de build;
-- registrar a decisão formalmente;
-- ajustar a estrutura do projeto conforme a plataforma escolhida.
-
-Entregáveis:
-- decisão documentada sobre o framework;
-- ajuste do arquivo de configuração de build, se necessário;
-- atualização da arquitetura e da documentação oficial.
-
-### 2. Definir a regra de negócio do gatilho
-
-Formalizar como o sistema decide comprar, vender ou ignorar uma operação.
-
-Ações:
-- definir se o comportamento será somente compra, somente venda ou ambos;
-- decidir se a regra usa cruzamento de limiar, comparação de valor atual versus anterior ou outra lógica;
-- definir a condição de disparo e a condição de rearme;
-- estabelecer a política de histerese para evitar oscilações e disparos repetidos;
-- definir tratamento para primeira medição, preço inválido e falha de comunicação.
-
-Entregáveis:
-- tabela de regras de decisão;
-- especificação da lógica de armado/desarmado;
-- documentação da regra aplicada no código.
-
-### 3. Definir a métrica temporal correta
-
-Estabelecer claramente o que significa o deadline de 500 ms descrito no PC1.
-
-Ações:
-- definir a métrica principal como intervalo entre detecção do gatilho e início do envio da requisição;
-- separar também as medições auxiliares de:
-  - tempo de aquisição de recursos;
-  - tempo de resposta HTTP;
-  - tempo total de confirmação da ordem;
-- instrumentar o código para registrar timestamps relevantes.
-
-Entregáveis:
-- métrica principal formalizada;
-- logs com timestamps de detecção, aquisição, envio e resposta;
-- explicação clara do que foi medido e do que não foi medido.
-
-### 4. Reavaliar a concorrência e o uso do recurso de rede
-
-O código atual usa um mutex compartilhado entre T1 e T2. Isso pode bloquear a tarefa de gatilho e comprometer o deadline.
-
-Ações:
-- avaliar se o mutex deve continuar existindo;
-- definir política de acesso ao cliente HTTP e ao endpoint de ordem;
-- decidir se será necessário separar clientes ou introduzir fila de requisições;
-- garantir que a tarefa crítica não fique bloqueada por operação de outra tarefa;
-- testar a solução antes de considerar a arquitetura final.
-
-Entregáveis:
-- estratégia de coordenação da rede documentada;
-- código com acesso controlado ao recurso compartilhado;
-- evidência de que o deadline foi respeitado em teste.
-
-### 5. Corrigir a integração da API e a autenticação da ordem
-
-A integração atual não apresenta a autenticação correta para ordens privadas da Binance Testnet.
-
-Ações:
-- revisar endpoint de ordem e parâmetros exigidos;
-- incluir timestamp e assinatura, quando necessário;
-- garantir que a autenticação respeite a API da corretora utilizada;
-- separar consulta pública de ordem privada;
-- evitar afirmar que a ordem foi executada somente porque houve resposta HTTP positiva.
-
-Entregáveis:
-- fluxo de autenticação correto;
-- estrutura de integração de rede adequada;
-- documentação de como a ordem é composta e validada.
-
-### 6. Remover segredos e ajustar a configuração
-
-A configuração atual em `include/config.h` contém dados sensíveis expostos em texto.
-
-Ações:
-- rotacionar ou revogar credenciais expostas;
-- remover segredos do repositório;
-- usar arquivo local de configuração ignorado pelo Git;
-- manter referências genéricas em documentação e código;
-- revisar histórico do Git para detectar vazamento antigo.
-
-Entregáveis:
-- configuração segura;
-- documentação do padrão de uso local;
-- credenciais revogadas/rotacionadas, quando aplicável.
-
-### 7. Reorganizar a estrutura modular do projeto
-
-Separar responsabilidades para melhorar clareza, manutenção e análise de concorrência.
-
-Ações:
-- manter configuração centralizada;
-- separar módulos para:
-  - gatilho;
-  - consulta de cotação;
-  - registro/log;
-  - sincronização;
-  - integração HTTP;
-  - métricas;
-- evitar mistura de responsabilidades em `main.cpp`;
-- manter a arquitetura consistente com a proposta do projeto.
-
-Entregáveis:
-- módulos organizados por responsabilidade;
-- estrutura clara e revisável;
-- documentação de módulos e dependências.
-
-### 8. Validar o comportamento do sistema
-
-Antes de declarar o projeto concluído, validar as propriedades fundamentais.
-
-Ações:
-- testar Wi‑Fi e reconexão;
-- testar sincronização NTP;
-- testar consulta de cotação;
-- testar gatilho em condições de preço;
-- testar falha de rede;
-- testar o critério de tempo do gatilho;
-- validar logs e estado de cada tarefa.
-
-Entregáveis:
-- resultados de testes documentados;
-- evidências de comportamento real;
-- limitação clara quando o hardware ou a rede não estiverem disponíveis.
-
-### 9. Atualizar a documentação oficial
-
-A documentação precisa refletir a solução final e não apenas a análise inicial.
-
-Ações:
-- atualizar `README.md`;
-- atualizar `ARCHITECTURE.md`;
-- revisar `TEST_PLAN.md`;
-- registrar decisões pendentes resolvidas;
-- explicar o que foi observado, o que foi decidido e o que ficou como hipótese.
-
-Entregáveis:
-- documentação coerente com a implementação final;
-- descrição clara de arquitetura, tarefas e regras;
-- testes e evidências em formato revisável.
+1. **Resolver a regra do gatilho.** A equipe/professor deve aprovar cruzamento → ação, ativo, quantidade, rearme e prevenção de duplicidade. Até lá, manter submissão de ordem desabilitada.
+2. **Validar a integração de rede.** Instalar a toolchain ESP-IDF/PlatformIO, compilar, tratar erros e verificar TLS, Wi-Fi, reconexão e cliente HTTP na placa.
+3. **Definir RT01 mensurável.** Separar detecção, preparação, envio e resposta. Não declarar menos de 500 ms atendido antes de medir em condições documentadas.
+4. **Implementar ordem de teste após a decisão.** Usar mock local ou Testnet com timestamp/assinatura HMAC e credenciais locais. Nunca Mainnet.
+5. **Executar testes do PC3.** Testar comunicação, erros de rede, fila, logs, concorrência, carga em pelo menos duas condições e fluxo integrado com mock.
+6. **Atualizar evidências.** Registrar resultados reais em [TEST_PLAN.md](TEST_PLAN.md) e atualizar [CURRENT_STATUS.md](CURRENT_STATUS.md).
+7. **Ação manual de segurança.** O proprietário deve rotacionar segredos que possam ter sido publicados e revisar o histórico remoto. Não foi feita reescrita do histórico.
 
 ## Critérios de conclusão
 
-O projeto deverá ser considerado pronto quando:
-
-- a plataforma foi definida e aprovada;
-- o gatilho foi formalizado e documentado;
-- o deadline de 500 ms foi definido e mensurado corretamente;
-- a concorrência e o acesso à rede foram analisados e validados;
-- a integração da API está correta e segura;
-- segredos foram removidos e a configuração ficou segura;
-- o código está modularizado e documentado;
-- há evidências de testes e medição.
-
-## Observações finais
-
-Este plano é prioritário e orienta a execução gradual da correção e consolidação do projeto. Ele não depende de cronograma, mas define a sequência adequada das decisões e implementações necessárias para transformar a análise atual em um projeto coerente e apresentável.
+- Build ESP-IDF reproduzível e erros/avisos revisados.
+- Regra de operação aprovada e implementada sem duplicidade não intencional.
+- Segredos fora do Git e credenciais antigas rotacionadas.
+- RT01 mensurado com ponto de início explicitamente definido.
+- Testes funcionais, concorrência, carga e integração registrados com evidências.
+- Documentação descreve o que foi realmente executado e mantém limitações visíveis.
