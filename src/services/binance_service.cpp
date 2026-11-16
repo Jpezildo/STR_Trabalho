@@ -76,16 +76,21 @@ esp_err_t binance_fetch_quote(float* price) {
     if (root == nullptr) {
         return ESP_ERR_INVALID_RESPONSE;
     }
+
     const cJSON* price_item = cJSON_GetObjectItemCaseSensitive(root, "price");
-    if (!cJSON_IsString(price_item) || price_item->valuestring == nullptr) {
-        cJSON_Delete(root);
-        return ESP_ERR_INVALID_RESPONSE;
+    char* end = nullptr;
+    float parsed_price = 0.0F;
+    bool valid = false;
+
+    if (cJSON_IsString(price_item) && price_item->valuestring != nullptr) {
+        parsed_price = strtof(price_item->valuestring, &end);
+        valid = end != price_item->valuestring && *end == '\0' &&
+               std::isfinite(parsed_price) && parsed_price > 0.0F;
+    } else if (cJSON_IsNumber(price_item)) {
+        parsed_price = static_cast<float>(price_item->valuedouble);
+        valid = std::isfinite(parsed_price) && parsed_price > 0.0F;
     }
 
-    char* end = nullptr;
-    const float parsed_price = strtof(price_item->valuestring, &end);
-    const bool valid = end != price_item->valuestring && *end == '\0' &&
-                       std::isfinite(parsed_price) && parsed_price > 0.0F;
     cJSON_Delete(root);
     if (!valid) {
         return ESP_ERR_INVALID_RESPONSE;
@@ -93,4 +98,21 @@ esp_err_t binance_fetch_quote(float* price) {
 
     *price = parsed_price;
     return ESP_OK;
+}
+
+esp_err_t binance_send_order(const char* side, const char* symbol, float quantity) {
+    if (side == nullptr || symbol == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (quantity <= 0.0F) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (STR_BINANCE_API_KEY[0] == '\0' || STR_BINANCE_API_SECRET[0] == '\0') {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
+    (void)side;
+    (void)symbol;
+    return ESP_ERR_NOT_SUPPORTED;
 }
